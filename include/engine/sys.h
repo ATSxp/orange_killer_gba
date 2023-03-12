@@ -43,13 +43,11 @@ INLINE void T_setMode(u32 mode)
 { REG_DISPCNT = mode; }
 
 INLINE void T_enableBg(u32 bg) {
-  if(bg < 4)
-    REG_DISPCNT |= (((bg + 1) << 8) << (bg > 0 ? 1 : 0));
+  REG_DISPCNT |= (((bg + 1) << 8) << (bg > 1 ? 1 : 0));
 }
 
 INLINE void T_disableBg(u32 bg) {
-  if (bg < 4)
-    REG_DISPCNT &= ~(((bg + 1) << 8) << (bg > 0 ? 1 : 0));
+  REG_DISPCNT &= ~(((bg + 1) << 8) << (bg > 1 ? 1 : 0));
 }
 
 INLINE void T_enableObjs() {
