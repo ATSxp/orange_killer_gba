@@ -3,11 +3,15 @@
 
 #include "engine/gba.h"
 
+#define PLAYER_DIR_LEFT 0x00
+#define PLAYER_DIR_RIGHT 0x01
+
 typedef struct Player {
   POINT32 pos;
   FIXED dx, dy;
   u32 w, h;
   TSprite *spr;
+  u16 dir;
   BOOL dead;
 } Player;
 

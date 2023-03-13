@@ -10,7 +10,7 @@ void initGame() {
   T_enableBg(1);
   T_enableObjs();
 
-  T_initObjs(1);
+  T_initObjs(10);
 
   tte_init_se_default(0, BG_CBB(1) | BG_SBB(31));
 

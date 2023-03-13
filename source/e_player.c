@@ -1,30 +1,53 @@
 #include "e_player.h"
 #include "utils.h"
 
+#include "e_bullet.h"
+
 #include "gfx_player.h"
+#include "gfx_orange.h"
 
 #define PLAYER_SPEED 0x0100 // tmp
 #define PLAYER_JUMP 0x0290
+#define ORANGE_SPEED 0x0280
+#define MAX_ORANGES 8
+#define MAX_SHOOT_COOLDOWN 0x0400
 
-void updateColl(Player *p);
-INLINE BOOL sol(int x, int y); // Tmp
+#define sol(x, y) isSolid(1, x, y, 1 | 2)
 
 Player player;
+Bullet p_oranges[MAX_ORANGES];
+
+FIXED p_shoot_cooldown;
+u8 p_orange_count;
+
+void updateColl(Player *p);
+void playerShoot(Player *p);
 
 void initPlayer(Player *p) {
   p->dead = FALSE;
   p->pos.x = p->pos.y = 32 << 8;
   p->w = p->h = 16;
   p->spr = T_addObj(p->pos.x >> 8, p->pos.y >> 8, OBJ_16X16, 1, 0, 1, SET_GFX_OBJ(FALSE, gfx_player));
+
+  GRIT_CPY(pal_obj_bank[1], gfx_orangePal);
+  GRIT_CPY(&tile_mem[4][5], gfx_orangeTiles);
+  
+  p_shoot_cooldown = MAX_SHOOT_COOLDOWN;
+  p_orange_count = 0;
 }
 
 void updatePlayer(Player *p) {
-  p->dx = 0;
+  if (p->dx != 0) {
+    T_flipObj(p->spr, p->dx < 0, FALSE);
+    p->dir = p->dx > 0 ? PLAYER_DIR_RIGHT : PLAYER_DIR_LEFT;
+  }
 
   if (key_is_down(KEY_LEFT)) p->dx = -PLAYER_SPEED;
   else if (key_is_down(KEY_RIGHT)) p->dx = PLAYER_SPEED;
+  else p->dx = 0;
 
   updateColl(p);
+  playerShoot(p);
 
   // Jump
   if (p->dy == 0 && key_hit(KEY_A)) p->dy = -PLAYER_JUMP;
@@ -41,8 +64,8 @@ void updateColl(Player *p) {
   u32 w = p->w - 1, h = p->h - 1;
 
   // Check left and right
-  if (sol(pt.x, pt.y) || sol(pt.x + w, pt.y) ||
-  sol(pt.x, pt.y + h) || sol(pt.x + w, pt.y + h)) {
+  if ((sol(pt.x, pt.y) || sol(pt.x + w, pt.y) ||
+  sol(pt.x, pt.y + h) || sol(pt.x + w, pt.y + h)) && p->dx != 0) {
     p->dx = 0;
   }
 
@@ -56,8 +79,32 @@ void updateColl(Player *p) {
   // Check Up and ... left/right maybe?
   if (p->dy < 0 && (sol(pt.x, pt.y) || sol(pt.x + w, pt.y)))
     p->dy = 0;
+
 }
 
-INLINE BOOL sol(int x, int y) {
-  return (getTile(1, x, y) & 1);
+void playerShoot(Player *p) {
+  u32 ii;
+  Bullet *oran = p_oranges;
+
+  p_shoot_cooldown -= 0x020;
+
+  if (key_hit(KEY_B)) {
+    if (p_shoot_cooldown <= 0x00) {
+      Bullet *o = &p_oranges[p_orange_count];
+
+      initBullet(o, p->pos.x >> 8, p->pos.y >> 8, 5, 1, 0, 0);
+      o->dx = p->dir > 0 ? ORANGE_SPEED : -ORANGE_SPEED;
+
+      p_orange_count = (p_orange_count + 1) & 7;
+      p_shoot_cooldown = MAX_SHOOT_COOLDOWN;
+    }
+
+  }
+
+  for (ii = 0; ii < MAX_ORANGES; ii++) {
+    if (oran == NULL) continue;
+    updateBullet(oran);
+    oran++;
+  }
+
 }
