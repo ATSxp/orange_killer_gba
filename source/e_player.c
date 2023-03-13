@@ -7,7 +7,8 @@
 #include "gfx_orange.h"
 
 #define PLAYER_SPEED 0x0100 // tmp
-#define PLAYER_JUMP 0x0290
+#define PLAYER_JUMP 0x0380
+#define PLAYER_DASH 0x0600
 #define ORANGE_SPEED 0x0280
 #define MAX_ORANGES 8
 #define MAX_SHOOT_COOLDOWN 0x0400
@@ -22,6 +23,7 @@ u8 p_orange_count;
 
 void updateColl(Player *p);
 void playerShoot(Player *p);
+void playerDash(Player *p);
 
 void initPlayer(Player *p) {
   p->dead = FALSE;
@@ -42,15 +44,32 @@ void updatePlayer(Player *p) {
     p->dir = p->dx > 0 ? PLAYER_DIR_RIGHT : PLAYER_DIR_LEFT;
   }
 
-  if (key_is_down(KEY_LEFT)) p->dx = -PLAYER_SPEED;
-  else if (key_is_down(KEY_RIGHT)) p->dx = PLAYER_SPEED;
-  else p->dx = 0;
+  if (p->state == PLAYER_STATE_IDLE || p->state == PLAYER_STATE_WALK) {
+    p->dash_speed = PLAYER_DASH;
+
+    if (key_is_down(KEY_LEFT)) p->dx = -PLAYER_SPEED;
+    else if (key_is_down(KEY_RIGHT)) p->dx = PLAYER_SPEED;
+    else p->dx = 0;
+
+    // Jump
+    if (p->dy == 0 && key_hit(KEY_A)) p->dy = -PLAYER_JUMP;
+
+    // Dash
+    if (key_hit(KEY_L)) {
+      p->dir = PLAYER_DIR_LEFT;
+      p->state = PLAYER_STATE_DASH;
+    } else if (key_hit(KEY_R)) {
+      p->dir = PLAYER_DIR_RIGHT;
+      p->state = PLAYER_STATE_DASH;
+    }
+
+  } else if (p->state == PLAYER_STATE_DASH) {
+    playerDash(p);
+
+  }
 
   updateColl(p);
   playerShoot(p);
-
-  // Jump
-  if (p->dy == 0 && key_hit(KEY_A)) p->dy = -PLAYER_JUMP;
 
   p->pos.x += p->dx;
   p->pos.y += p->dy;
@@ -73,7 +92,11 @@ void updateColl(Player *p) {
   if (sol((p->pos.x >> 8), pt.y + (h + 1)) || sol((p->pos.x >> 8) + w, pt.y + (h + 1))) {
     p->dy = 0;
   } else {
-    p->dy += 0x033; // .8 = 0.2
+    if (p->state != PLAYER_STATE_DASH)
+      p->dy += 0x033; // .8 = 0.2
+    else 
+      p->dy = 0;
+
   }
 
   // Check Up and ... left/right maybe?
@@ -106,5 +129,14 @@ void playerShoot(Player *p) {
     updateBullet(oran);
     oran++;
   }
+
+}
+
+void playerDash(Player *p) {
+  p->dash_speed -= 0x080;
+
+  p->dx = p->dir > 0 ? p->dash_speed : -p->dash_speed ;
+
+  if ((p->dash_speed <= 0x00)) p->state = PLAYER_STATE_IDLE;
 
 }
